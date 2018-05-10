@@ -7,69 +7,60 @@
  ******************************************************************************/
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
+
+#include "support.h"
 #include "kernel.cu"
-#include "support.cu"
 
-int main (int argc, char *argv[])
+int main(int argc, char* argv[])
 {
-    //set standard seed
-    srand(217);
-
     Timer timer;
-    cudaError_t cuda_ret;
 
     // Initialize host variables ----------------------------------------------
 
     printf("\nSetting up the problem..."); fflush(stdout);
     startTime(&timer);
 
-    float *A_h, *B_h, *C_h;
-    float *A_d, *B_d, *C_d;
-    size_t A_sz, B_sz, C_sz;
-    unsigned VecSize;
-   
-    dim3 dim_grid, dim_block;
+    unsigned int *in_h;
+    unsigned int *bins_h;
+    unsigned int *in_d;
+    unsigned int *bins_d;
+    unsigned int num_elements, num_bins;
+    cudaError_t cuda_ret;
 
-    if (argc == 1) {
-        VecSize = 1000;
-
-      } else if (argc == 2) {
-      VecSize = atoi(argv[1]);   
-      
-      
-      }
-  
-      else {
-        printf("\nOh no!\nUsage: ./vecAdd <Size>");
+    if(argc == 1) {
+        num_elements = 1000000;
+        num_bins = 4096;
+    } else if(argc == 2) {
+        num_elements = atoi(argv[1]);
+        num_bins = 4096;
+    } else if(argc == 3) {
+        num_elements = atoi(argv[1]);
+        num_bins = atoi(argv[2]);
+    } else {
+        printf("\n    Invalid input parameters!"
+           "\n    Usage: ./histogram            # Input: 1,000,000, Bins: 4,096"
+           "\n    Usage: ./histogram <m>        # Input: m, Bins: 4,096"
+           "\n    Usage: ./histogram <m> <n>    # Input: m, Bins: n"
+           "\n");
         exit(0);
     }
-
-    A_sz = VecSize;
-    B_sz = VecSize;
-    C_sz = VecSize;
-    A_h = (float*) malloc( sizeof(float)*A_sz );
-    for (unsigned int i=0; i < A_sz; i++) { A_h[i] = (rand()%100)/100.00; }
-
-    B_h = (float*) malloc( sizeof(float)*B_sz );
-    for (unsigned int i=0; i < B_sz; i++) { B_h[i] = (rand()%100)/100.00; }
-
-    C_h = (float*) malloc( sizeof(float)*C_sz );
+    initVector(&in_h, num_elements, num_bins);
+    bins_h = (unsigned int*) malloc(num_bins*sizeof(unsigned int));
 
     stopTime(&timer); printf("%f s\n", elapsedTime(timer));
-    printf("    size Of vector: %u x %u\n  ", VecSize);
+    printf("    Input size = %u\n    Number of bins = %u\n", num_elements,
+        num_bins);
 
     // Allocate device variables ----------------------------------------------
 
     printf("Allocating device variables..."); fflush(stdout);
     startTime(&timer);
 
-    //INSERT CODE HERE
-	cudaMalloc(&A_d, sizeof(float)*A_sz); 
-
-	cudaMalloc(&B_d, sizeof(float)*B_sz);
-
-	cudaMalloc(&C_d, sizeof(float)*C_sz);
+    cuda_ret = cudaMalloc((void**)&in_d, num_elements * sizeof(unsigned int));
+    if(cuda_ret != cudaSuccess) FATAL("Unable to allocate device memory");
+    cuda_ret = cudaMalloc((void**)&bins_d, num_bins * sizeof(unsigned int));
+    if(cuda_ret != cudaSuccess) FATAL("Unable to allocate device memory");
 
     cudaDeviceSynchronize();
     stopTime(&timer); printf("%f s\n", elapsedTime(timer));
@@ -79,21 +70,24 @@ int main (int argc, char *argv[])
     printf("Copying data from host to device..."); fflush(stdout);
     startTime(&timer);
 
-    //INSERT CODE HERE
-	cudaMemcpy(A_d, A_h, A_sz*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(B_d, B_h, B_sz*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(C_d, C_h, B_sz*sizeof(float), cudaMemcpyHostToDevice);
-	
+    cuda_ret = cudaMemcpy(in_d, in_h, num_elements * sizeof(unsigned int),
+        cudaMemcpyHostToDevice);
+    if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to the device");
+
+    cuda_ret = cudaMemset(bins_d, 0, num_bins * sizeof(unsigned int));
+    if(cuda_ret != cudaSuccess) FATAL("Unable to set device memory");
+
     cudaDeviceSynchronize();
     stopTime(&timer); printf("%f s\n", elapsedTime(timer));
 
-    // Launch kernel  ---------------------------
+    // Launch kernel ----------------------------------------------------------
     printf("Launching kernel..."); fflush(stdout);
     startTime(&timer);
-    basicVecAdd(A_d, B_d, C_d, VecSize); //In kernel.cu
 
+    histogram(in_d, bins_d, num_elements, num_bins);
     cuda_ret = cudaDeviceSynchronize();
-	if(cuda_ret != cudaSuccess) FATAL("Unable to launch kernel");
+    if(cuda_ret != cudaSuccess) FATAL("Unable to launch/execute kernel");
+
     stopTime(&timer); printf("%f s\n", elapsedTime(timer));
 
     // Copy device variables from host ----------------------------------------
@@ -101,8 +95,9 @@ int main (int argc, char *argv[])
     printf("Copying data from device to host..."); fflush(stdout);
     startTime(&timer);
 
-    //INSERT CODE HERE
-	cudaMemcpy(C_h, C_d, C_sz*sizeof(float), cudaMemcpyDeviceToHost);
+    cuda_ret = cudaMemcpy(bins_h, bins_d, num_bins * sizeof(unsigned int),
+        cudaMemcpyDeviceToHost);
+	if(cuda_ret != cudaSuccess) FATAL("Unable to copy memory to host");
 
     cudaDeviceSynchronize();
     stopTime(&timer); printf("%f s\n", elapsedTime(timer));
@@ -111,19 +106,13 @@ int main (int argc, char *argv[])
 
     printf("Verifying results..."); fflush(stdout);
 
-    verify(A_h, B_h, C_h, VecSize);
-
+    verify(in_h, bins_h, num_elements, num_bins);
 
     // Free memory ------------------------------------------------------------
 
-    free(A_h);
-    free(B_h);
-    free(C_h);
+    cudaFree(in_d); cudaFree(bins_d);
+    free(in_h); free(bins_h);
 
-    //INSERT CODE HERE
-	cudaFree(A_d);
-	cudaFree(B_d);
-	cudaFree(C_d);
     return 0;
-
 }
+

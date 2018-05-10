@@ -1,4 +1,3 @@
-
 /******************************************************************************
  *cr
  *cr            (C) Copyright 2010 The Board of Trustees of the
@@ -13,22 +12,46 @@
 
 #include "support.h"
 
-void verify(float *A, float *B, float *C, unsigned int n) {
+void initVector(unsigned int **vec_h, unsigned int size, unsigned int num_bins)
+{
+    *vec_h = (unsigned int*)malloc(size*sizeof(unsigned int));
 
-  const float relativeTolerance = 1e-2;
+    if(*vec_h == NULL) {
+        FATAL("Unable to allocate host");
+    }
 
-  for(int i = 0; i < n; ++i) {
-      float sum = A[i]+B[i];
-      printf("\t%f/%f",sum,C[i]);
-      float relativeError = (sum - C[i])/sum;
-      if (relativeError > relativeTolerance
-        || relativeError < -relativeTolerance) {
-        printf("\nTEST FAILED\n\n");
+    for (unsigned int i=0; i < size; i++) {
+        (*vec_h)[i] = (rand()%num_bins);
+    }
+
+}
+
+void verify(unsigned int* input, unsigned int * bins, unsigned int num_elements, unsigned int num_bins) {
+
+  // Initialize reference
+  unsigned int* bins_ref = (unsigned int*) malloc(num_bins*sizeof(unsigned int));
+  for(unsigned int binIdx = 0; binIdx < num_bins; ++binIdx) {
+      bins_ref[binIdx] = 0;
+  }
+
+  // Compute reference bins
+  for(unsigned int i = 0; i < num_elements; ++i) {
+      unsigned int binIdx = input[i];
+      if(bins_ref[binIdx] < num_elements) {
+          ++bins_ref[binIdx];
+      }
+  }
+
+  // Compare to reference bins
+  for(unsigned int binIdx = 0; binIdx < num_bins; ++binIdx) {
+      if(bins[binIdx] != bins_ref[binIdx]) {
+        printf("TEST FAILED at bin %u, cpu = %u, gpu = %u\n\n", binIdx, bins_ref[binIdx], bins[binIdx]);
         exit(0);
       }
-    
   }
-  printf("\nTEST PASSED\n\n");
+  printf("TEST PASSED\n\n");
+
+  free(bins_ref);
 
 }
 
@@ -44,3 +67,4 @@ float elapsedTime(Timer timer) {
     return ((float) ((timer.endTime.tv_sec - timer.startTime.tv_sec) \
                 + (timer.endTime.tv_usec - timer.startTime.tv_usec)/1.0e6));
 }
+
