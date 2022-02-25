@@ -1,0 +1,11 @@
+--2022-01-27 11:14:56--  https://hkustconnect-my.sharepoint.com/:u:/g/personal/cleiaa_connect_ust_hk/EZeGsvuqh1dJr0E2Fxf6IKoBQ7wZpGi3NFqZxhzC8-3GHg?e=LLWUZT&download=1
+正在解析主机 hkustconnect-my.sharepoint.com (hkustconnect-my.sharepoint.com)... 13.107.136.9, 13.107.138.9
+正在连接 hkustconnect-my.sharepoint.com (hkustconnect-my.sharepoint.com)|13.107.136.9|:443... 已连接。
+已发出 HTTP 请求，正在等待回应... 302 Found
+位置：/personal/cleiaa_connect_ust_hk/Documents/cvpr2020-polar-rr/VGG_Model.zip [跟随至新的 URL]
+--2022-01-27 11:15:04--  https://hkustconnect-my.sharepoint.com/personal/cleiaa_connect_ust_hk/Documents/cvpr2020-polar-rr/VGG_Model.zip
+再次使用存在的到 hkustconnect-my.sharepoint.com:443 的连接。
+已发出 HTTP 请求，正在等待回应... 200 OK
+长度： 534905125 (510M) [application/x-zip-compressed]
+正在保存至: “EZeGsvuqh1dJr0E2Fxf6IKoBQ7wZpGi3NFqZxhzC8-3GHg?e=LLWUZT&download=1.1”
+
