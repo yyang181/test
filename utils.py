@@ -154,7 +154,7 @@ def read_flow_sequence_w_mask(filename, num_frames):
 
 
 
-def read_flow_sequence(filename, num_frames):
+def read_flow_sequence(filename, num_frames=2):
     file1 = os.path.splitext(os.path.basename(filename))[0]
     folder = os.path.split(filename)[0]
     ext = os.path.splitext(os.path.basename(filename))[1]
